@@ -1,12 +1,14 @@
-
 version: '3.9'
 
 services:
   frontend:
-    container_name: foodgram-front
-    build: ../frontend
+    build:
+      context: ../frontend
+    command: npm run build
     volumes:
-      - ../frontend/:/app/result_build/
+      - frontend_build:/app/build
+    depends_on:
+      - backend
 
   backend:
     build:
