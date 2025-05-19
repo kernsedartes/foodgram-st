@@ -3,10 +3,9 @@ FROM python:3.11-slim
 WORKDIR /app
 
 COPY requirements.txt .
-COPY /data .
 
 RUN pip install -r requirements.txt --no-cache-dir
 
 COPY . .
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "backend.wsgi"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", ".wsgi"]
