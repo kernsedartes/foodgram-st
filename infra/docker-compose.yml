@@ -3,6 +3,7 @@ volumes:
   static:
   media:
   docs:
+  frontend_build:
 
 networks:
   foodgram-network:
@@ -41,11 +42,14 @@ services:
 
   frontend:
     container_name: foodgram-front
-    build: ../frontend/
+    build: 
+      context: ../frontend/
+      dockerfile: Dockerfile
     env_file: ../.env
     volumes:
       - static:/static/
       - docs:/app/docs/
+      - frontend_build:/usr/share/nginx/html
     networks:
       - foodgram-network
 
@@ -60,6 +64,7 @@ services:
       - static:/static/
       - media:/app/media/
       - docs:/app/docs/
+      - frontend_build:/usr/share/nginx/html
     depends_on:
       - backend
       - frontend
