@@ -6,7 +6,7 @@ case "$OSTYPE" in
     *)        python=python3 ;;
 esac
 
-PATH_TO_MANAGE_PY=$(find ../ -name "manage.py" -not -path "*/env" -not -path "*/venv");
+PATH_TO_MANAGE_PY="D:\yandexproj\foodgram-st\backend\manage.py"
 BASE_DIR="$(dirname "${PATH_TO_MANAGE_PY}")";
 cd $BASE_DIR
 status=$?;
