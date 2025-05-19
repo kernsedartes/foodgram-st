@@ -1,11 +1,7 @@
-FROM python:3.11-slim
-
+FROM python:3.13
 WORKDIR /app
-
-COPY requirements.txt .
-
-RUN pip install -r requirements.txt --no-cache-dir
-
+COPY ../requirements.txt .
+COPY ../data .
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", ".wsgi"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "foodgram.wsgi"]
