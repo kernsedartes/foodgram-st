@@ -6,6 +6,8 @@ volumes:
 
 networks:
   foodgram-network:
+    driver: bridge
+    name: foodgram-network
 
 services:
   db:
