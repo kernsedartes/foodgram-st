@@ -6,6 +6,6 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# production env
-FROM nginx:1.25.4-alpine
-COPY --from=build /app/build /usr/share/nginx/html
+FROM alpine
+WORKDIR /frontend_build
+COPY --from=build /app/build ./
