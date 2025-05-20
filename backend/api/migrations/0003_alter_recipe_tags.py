@@ -13,6 +13,9 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='recipe',
             name='tags',
-            field=models.ManyToManyField(related_name='recipes', to='api.tag', verbose_name='Теги'),
+            field=models.ManyToManyField(
+                related_name='recipes',
+                to='api.tag',
+                verbose_name='Теги'),
         ),
     ]
