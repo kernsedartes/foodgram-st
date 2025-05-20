@@ -14,6 +14,5 @@ urlpatterns = [
     path('auth/token/login/', CustomTokenLoginView.as_view(), name='login'),
     path('auth/', include('djoser.urls')),
     path('auth/', include('djoser.urls.authtoken')),
-    # path('auth/', include('djoser.urls.jwt')),
     path('', include(router.urls)),
 ]
