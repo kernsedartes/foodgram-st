@@ -30,12 +30,14 @@ services:
       - static:/app/staticfiles/
       - media:/app/media/
       - docs:/app/docs/
+      - ./backend/data:/app/data/
     depends_on:
       - db
       - frontend
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
+             python manage.py load_ingredients /app/data/ingredients.json &&
              gunicorn backend.wsgi --bind 0.0.0.0:8000"
     networks:
       - foodgram-network
