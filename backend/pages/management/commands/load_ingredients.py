@@ -1,6 +1,6 @@
 import json
 from django.core.management.base import BaseCommand
-from pages.models import Ingredient
+from api.models import Ingredient
 
 
 class Command(BaseCommand):
