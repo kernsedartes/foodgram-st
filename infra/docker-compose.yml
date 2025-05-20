@@ -69,7 +69,7 @@ services:
       - static:/app/staticfiles/
       - ./backend/media:/app/media/
       - docs:/app/docs/
-      - frontend_build:/usr/share/nginx/html
+      - ./frontend_build:/usr/share/nginx/html
     depends_on:
       - backend
       - frontend
