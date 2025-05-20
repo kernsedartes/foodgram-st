@@ -9,6 +9,9 @@ networks:
   foodgram-network:
     driver: bridge
     name: foodgram-network
+    labels:
+      com.docker.compose.network: "foodgram-network"
+    attachable: true
 
 services:
 
