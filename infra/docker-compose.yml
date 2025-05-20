@@ -61,7 +61,7 @@ services:
       - "8000:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - static:/static/
+      - static:/app/staticfiles/
       - media:/app/media/
       - docs:/app/docs/
       - frontend_build:/usr/share/nginx/html
