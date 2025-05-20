@@ -30,7 +30,7 @@ services:
       - static:/app/staticfiles/
       - media:/app/media/
       - docs:/app/docs/
-      - ./backend/data:/app/data/
+      - ../backend/data:/app/data/
     depends_on:
       - db
       - frontend
