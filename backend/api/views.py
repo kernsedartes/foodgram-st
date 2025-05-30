@@ -25,7 +25,6 @@ from .models import (
     Recipe,
     RecipeIngredient,
     ShoppingCart,
-    Tag,
 )
 from .pagination import CustomPagination
 from .permissions import IsAuthorOrReadOnly
@@ -34,7 +33,6 @@ from .serializers import (
     RecipeCreateSerializer,
     RecipeReadSerializer,
     RecipeShortSerializer,
-    TagSerializer,
     SubscriptionSerializer,
     UserSerializer,
     UserCreateSerializer,

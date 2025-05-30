@@ -12,6 +12,9 @@ from users.models import Subscription, User
 from django.contrib.auth import authenticate
 from api.utils import Base64ImageField
 
+MIN_TIME = 1
+MAX_TIME = 32000
+
 
 class CustomTokenCreateSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -160,7 +163,7 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 class IngredientWriteSerializer(serializers.Serializer):
     id = serializers.IntegerField()
-    amount = serializers.IntegerField(min_value=1, max_value=32000)
+    amount = serializers.IntegerField(min_value=MIN_TIME, max_value=MAX_TIME)
 
 
 class RecipeIngredientSerializer(serializers.ModelSerializer):
@@ -222,6 +225,14 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 class RecipeCreateSerializer(serializers.ModelSerializer):
     ingredients = IngredientWriteSerializer(many=True)
     image = Base64ImageField(allow_null=False, required=True)
+    cooking_time = serializers.IntegerField(
+        min_value=MIN_TIME,
+        max_value=MAX_TIME,
+        error_messages={
+            "min_value": f"Время приготовления должно быть не менее {MIN_TIME} минуты.",
+            "max_value": f"Время приготовления не должно превышать {MAX_TIME} минут.",
+        },
+    )
 
     class Meta:
         model = Recipe
@@ -252,59 +263,47 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             )
         return data
 
-    def create(self, validated_data):
-        ingredients_data = validated_data.pop("ingredients")
-        tags_data = validated_data.pop("tags", [])
-        recipe = Recipe.objects.create(**validated_data)
-        recipe.tags.set(tags_data)
+    def _create_recipe_ingredients(self, recipe, ingredients_data):
 
-        for ingredient_data in ingredients_data:
-            try:
-                ingredient = Ingredient.objects.get(id=ingredient_data["id"])
-            except Ingredient.DoesNotExist:
-                raise serializers.ValidationError(
-                    {
-                        "ingredients": (
-                            f"Ингредиент с id={ingredient_data['id']} "
-                            f"не существует."
-                        )
-                    }
-                )
-            RecipeIngredient.objects.create(
-                recipe=recipe,
-                ingredient=ingredient,
-                amount=ingredient_data["amount"],
+        ingredient_ids = [item["id"] for item in ingredients_data]
+        ingredients = Ingredient.objects.filter(id__in=ingredient_ids)
+        ingredient_map = {
+            ingredient.id: ingredient for ingredient in ingredients
+        }
+
+        missing_ids = set(ingredient_ids) - set(ingredient_map.keys())
+        if missing_ids:
+            raise serializers.ValidationError(
+                {
+                    "ingredients": (
+                        f"Ингредиенты с id {', '.join(map(str, missing_ids))} "
+                        f"не существуют."
+                    )
+                }
             )
 
+        recipe_ingredients = [
+            RecipeIngredient(
+                recipe=recipe,
+                ingredient=ingredient_map[ingredient_data["id"]],
+                amount=ingredient_data["amount"],
+            )
+            for ingredient_data in ingredients_data
+        ]
+        RecipeIngredient.objects.bulk_create(recipe_ingredients)
+
+    def create(self, validated_data):
+        ingredients_data = validated_data.pop("ingredients")
+        recipe = Recipe.objects.create(**validated_data)
+        self._create_recipe_ingredients(recipe, ingredients_data)
         return recipe
 
     def update(self, instance, validated_data):
         ingredients_data = validated_data.pop("ingredients")
-        tags_data = validated_data.pop("tags", [])
 
         instance = super().update(instance, validated_data)
-        instance.tags.clear()
-        instance.tags.set(tags_data)
         instance.recipe_ingredients.all().delete()
-
-        for ingredient_data in ingredients_data:
-            try:
-                ingredient = Ingredient.objects.get(id=ingredient_data["id"])
-            except Ingredient.DoesNotExist:
-                raise serializers.ValidationError(
-                    {
-                        "ingredients": (
-                            f"Ингредиент с id={ingredient_data['id']} "
-                            f"не существует."
-                        )
-                    }
-                )
-            RecipeIngredient.objects.create(
-                recipe=instance,
-                ingredient=ingredient,
-                amount=ingredient_data["amount"],
-            )
-
+        self._create_recipe_ingredients(instance, ingredients_data)
         return instance
 
     def to_representation(self, instance):
