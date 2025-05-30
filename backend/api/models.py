@@ -111,7 +111,7 @@ class Favorite(models.Model):
                 fields=["user", "recipe"], name="unique_favorite"
             )
         ]
-        ordering = ["recipe.-pub_date"]
+        ordering = []
 
     def __str__(self):
         return f"{self.user} -> {self.recipe}"
@@ -141,7 +141,7 @@ class ShoppingCart(models.Model):
                 fields=["user", "recipe"], name="unique_shopping_cart"
             )
         ]
-        ordering = ["recipe.-pub_date"]
+        ordering = []
 
     def __str__(self):
         return f"{self.user} -> {self.recipe}"
