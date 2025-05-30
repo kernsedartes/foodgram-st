@@ -13,8 +13,10 @@ from users.models import Subscription, User
 from django.contrib.auth import authenticate
 from api.utils import Base64ImageField
 
-MIN_TIME = 1
-MAX_TIME = 32000
+MIN_AMOUNT = 1
+MAX_AMOUNT = 32000
+MAX_NAME_LENGTH = 256
+MIN_TEXT_LENGTH = 1
 
 
 class CustomTokenCreateSerializer(serializers.Serializer):
@@ -171,7 +173,14 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 class IngredientWriteSerializer(serializers.Serializer):
     id = serializers.IntegerField()
-    amount = serializers.IntegerField(min_value=MIN_TIME, max_value=MAX_TIME)
+    amount = serializers.IntegerField(
+        min_value=MIN_AMOUNT,
+        max_value=MAX_AMOUNT,
+        error_messages={
+            "min_value": f"Количество должно быть не менее {MIN_AMOUNT}.",
+            "max_value": f"Количество не должно превышать {MAX_AMOUNT}.",
+        },
+    )
 
 
 class RecipeIngredientSerializer(serializers.ModelSerializer):
@@ -234,13 +243,15 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
     ingredients = IngredientWriteSerializer(many=True)
     image = Base64ImageField(allow_null=False, required=True)
     cooking_time = serializers.IntegerField(
-        min_value=MIN_TIME,
-        max_value=MAX_TIME,
+        min_value=MIN_AMOUNT,
+        max_value=MAX_AMOUNT,
         error_messages={
-            "min_value": f"Время приготовления должно быть не менее {MIN_TIME} минуты.",
-            "max_value": f"Время приготовления не должно превышать {MAX_TIME} минут.",
+            "min_value": f"Время приготовления должно быть не менее {MIN_AMOUNT} минуты.",
+            "max_value": f"Время приготовления не должно превышать {MAX_AMOUNT} минут.",
         },
     )
+    name = serializers.CharField(max_length=MAX_NAME_LENGTH)
+    text = serializers.CharField(min_length=MIN_TEXT_LENGTH)
 
     class Meta:
         model = Recipe
@@ -253,52 +264,68 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, data):
-        image = data.get("image")
-        if image is None or image == "":
-            raise serializers.ValidationError(
-                {"image": "Это поле обязательно."}
-            )
+        try:
+            image = data.get("image")
+            if image is None or image == "":
+                raise serializers.ValidationError(
+                    {"image": "Это поле обязательно."}
+                )
 
-        ingredients = data.get("ingredients")
-        if not ingredients:
+            ingredients = data.get("ingredients")
+            if not ingredients:
+                raise serializers.ValidationError(
+                    {"ingredients": "Нужен хотя бы один ингредиент"}
+                )
+            ingredient_ids = [item["id"] for item in ingredients]
+            if len(ingredient_ids) != len(set(ingredient_ids)):
+                raise serializers.ValidationError(
+                    {"ingredients": "Ингредиенты не должны повторяться"}
+                )
+
+            # Validate ingredient amounts (redundant with IngredientWriteSerializer, but explicit)
+            for ingredient in ingredients:
+                amount = ingredient.get("amount")
+                if not isinstance(amount, (int, float)) or amount <= 0:
+                    raise serializers.ValidationError(
+                        {
+                            "ingredients": "Количество для ингредиента с id"
+                            + f" {ingredient['id']} должно быть положительным числом."
+                        }
+                    )
+        except Exception as e:
             raise serializers.ValidationError(
-                {"ingredients": "Нужен хотя бы один ингредиент"}
-            )
-        ingredient_ids = [item["id"] for item in ingredients]
-        if len(ingredient_ids) != len(set(ingredient_ids)):
-            raise serializers.ValidationError(
-                {"ingredients": "Ингредиенты не должны повторяться"}
+                {"validation": f"Ошибка валидации: {str(e)}"}
             )
         return data
 
     def _create_recipe_ingredients(self, recipe, ingredients_data):
-
-        ingredient_ids = [item["id"] for item in ingredients_data]
-        ingredients = Ingredient.objects.filter(id__in=ingredient_ids)
-        ingredient_map = {
-            ingredient.id: ingredient for ingredient in ingredients
-        }
-
-        missing_ids = set(ingredient_ids) - set(ingredient_map.keys())
-        if missing_ids:
+        try:
+            ingredient_ids = [item["id"] for item in ingredients_data]
+            ingredients = Ingredient.objects.filter(id__in=ingredient_ids)
+            ingredient_map = {
+                ingredient.id: ingredient for ingredient in ingredients
+            }
+            missing_ids = set(ingredient_ids) - set(ingredient_map.keys())
+            if missing_ids:
+                raise serializers.ValidationError(
+                    {
+                        "ingredients": f"Ингредиенты с id "
+                        + f"{', '.join(map(str, missing_ids))} не существуют."
+                    }
+                )
+            recipe_ingredients = [
+                RecipeIngredient(
+                    recipe=recipe,
+                    ingredient=ingredient_map[ingredient_data["id"]],
+                    amount=ingredient_data["amount"],
+                )
+                for ingredient_data in ingredients_data
+            ]
+            RecipeIngredient.objects.bulk_create(recipe_ingredients)
+        except Exception as e:
             raise serializers.ValidationError(
-                {
-                    "ingredients": (
-                        f"Ингредиенты с id {', '.join(map(str, missing_ids))} "
-                        f"не существуют."
-                    )
-                }
+                {"ingredients": f"Ошибка при создании ингредиентов: {str(e)}"}
             )
-
-        recipe_ingredients = [
-            RecipeIngredient(
-                recipe=recipe,
-                ingredient=ingredient_map[ingredient_data["id"]],
-                amount=ingredient_data["amount"],
-            )
-            for ingredient_data in ingredients_data
-        ]
-        RecipeIngredient.objects.bulk_create(recipe_ingredients)
 
     def create(self, validated_data):
         ingredients_data = validated_data.pop("ingredients")
