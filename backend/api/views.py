@@ -38,6 +38,8 @@ from .serializers import (
     UserCreateSerializer,
     UserSimpleSerializer,
     SetPasswordSerializer,
+    FavoriteSerializer,
+    ShoppingCartSerializer,
 )
 from users.models import Subscription, User
 from django.contrib.auth import authenticate
@@ -255,15 +257,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
         recipe = get_object_or_404(Recipe, pk=pk)
 
         if request.method == "POST":
-            if recipe.favorites.filter(
-                user=request.user, recipe=recipe
-            ).exists():
-                return Response(
-                    {"errors": "Рецепт уже в избранном"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            Favorite.objects.create(user=request.user, recipe=recipe)
-            serializer = RecipeShortSerializer(recipe)
+            serializer = FavoriteSerializer(
+                data={"user": request.user.id, "recipe": recipe.id},
+                context={"request": request},
+            )
+            serializer.is_valid(raise_exception=True)
+            favorite = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         favorite = recipe.favorites.filter(user=request.user)
@@ -284,15 +283,12 @@ class RecipeViewSet(viewsets.ModelViewSet):
         recipe = get_object_or_404(Recipe, pk=pk)
 
         if request.method == "POST":
-            if recipe.shopping_cart.filter(
-                user=request.user, recipe=recipe
-            ).exists():
-                return Response(
-                    {"errors": "Рецепт уже в списке покупок"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            ShoppingCart.objects.create(user=request.user, recipe=recipe)
-            serializer = RecipeShortSerializer(recipe)
+            serializer = ShoppingCartSerializer(
+                data={"user": request.user.id, "recipe": recipe.id},
+                context={"request": request},
+            )
+            serializer.is_valid(raise_exception=True)
+            shopping_cart = serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         shopping_cart = recipe.shopping_cart.filter(user=request.user)

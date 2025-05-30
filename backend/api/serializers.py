@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.validators import UniqueTogetherValidator
 from djoser.serializers import TokenCreateSerializer
 from .models import (
     Favorite,
@@ -137,7 +138,14 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         ]
 
     def get_is_subscribed(self, obj):
-        return True
+        user = (
+            self.context.get("request").user
+            if self.context.get("request")
+            else None
+        )
+        if not user or user.is_anonymous:
+            return False
+        return obj.author.subscribing.filter(user=user).exists()
 
     def get_recipes(self, obj):
         request = self.context.get("request")
@@ -308,3 +316,75 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         return RecipeReadSerializer(instance, context=self.context).data
+
+
+class FavoriteSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), default=serializers.CurrentUserDefault()
+    )
+    recipe = serializers.PrimaryKeyRelatedField(queryset=Recipe.objects.all())
+
+    class Meta:
+        model = Favorite
+        fields = ("user", "recipe")
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Favorite.objects.all(),
+                fields=["user", "recipe"],
+                message="Рецепт уже в избранном",
+            )
+        ]
+
+    def validate(self, data):
+        user = data.get("user")
+        recipe = data.get("recipe")
+
+        if recipe.favorites.filter(user=user).exists():
+            raise serializers.ValidationError(
+                {"errors": "Рецепт уже в избранном"}
+            )
+        return data
+
+    def create(self, validated_data):
+        return Favorite.objects.create(**validated_data)
+
+    def to_representation(self, instance):
+        return RecipeShortSerializer(
+            instance.recipe, context=self.context
+        ).data
+
+
+class ShoppingCartSerializer(serializers.ModelSerializer):
+    user = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), default=serializers.CurrentUserDefault()
+    )
+    recipe = serializers.PrimaryKeyRelatedField(queryset=Recipe.objects.all())
+
+    class Meta:
+        model = ShoppingCart
+        fields = ("user", "recipe")
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=ShoppingCart.objects.all(),
+                fields=["user", "recipe"],
+                message="Рецепт уже в списке покупок",
+            )
+        ]
+
+    def validate(self, data):
+        user = data.get("user")
+        recipe = data.get("recipe")
+
+        if recipe.shopping_cart.filter(user=user).exists():
+            raise serializers.ValidationError(
+                {"errors": "Рецепт уже в списке покупок"}
+            )
+        return data
+
+    def create(self, validated_data):
+        return ShoppingCart.objects.create(**validated_data)
+
+    def to_representation(self, instance):
+        return RecipeShortSerializer(
+            instance.recipe, context=self.context
+        ).data

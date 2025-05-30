@@ -3,7 +3,7 @@ volumes:
   static:
   media:
   docs:
-  frontend_build:  # ✅ не забудь оставить этот volume
+  frontend_build: 
 
 networks:
   foodgram-network:
