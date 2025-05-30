@@ -7,7 +7,6 @@ from .models import (
     Recipe,
     RecipeIngredient,
     ShoppingCart,
-    Tag,
 )
 from users.models import Subscription, User
 from django.contrib.auth import authenticate
@@ -157,12 +156,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         return obj.author.recipes.count()
 
 
-class TagSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Tag
-        fields = "__all__"
-
-
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
@@ -233,11 +226,6 @@ class RecipeReadSerializer(serializers.ModelSerializer):
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
     ingredients = IngredientWriteSerializer(many=True)
-    tags = serializers.PrimaryKeyRelatedField(
-        queryset=Tag.objects.all(),
-        many=True,
-        required=False,
-    )
     image = Base64ImageField(allow_null=False, required=True)
 
     class Meta:

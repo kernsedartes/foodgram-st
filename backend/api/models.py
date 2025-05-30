@@ -23,21 +23,6 @@ class Ingredient(models.Model):
         return f"{self.name}, {self.measurement_unit}"
 
 
-class Tag(models.Model):
-    """Модель тега"""
-
-    name = models.CharField("Название", max_length=64, unique=True)
-    color = models.CharField("Цвет в HEX", max_length=7, unique=True)
-    slug = models.SlugField("Slug", max_length=64, unique=True)
-
-    class Meta:
-        verbose_name = "Тег"
-        verbose_name_plural = "Теги"
-
-    def __str__(self):
-        return self.name
-
-
 class Recipe(models.Model):
     """Модель рецепта"""
 
@@ -52,11 +37,6 @@ class Recipe(models.Model):
     text = models.TextField("Описание")
     ingredients = models.ManyToManyField(
         Ingredient, through="RecipeIngredient", verbose_name="Ингредиенты"
-    )
-    tags = models.ManyToManyField(
-        Tag,
-        related_name="recipes",
-        verbose_name="Теги",
     )
     cooking_time = models.PositiveIntegerField(
         "Время приготовления (мин)", validators=[MinValueValidator(1)]

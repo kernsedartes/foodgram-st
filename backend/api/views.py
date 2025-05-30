@@ -24,7 +24,6 @@ from .models import (
     Recipe,
     RecipeIngredient,
     ShoppingCart,
-    Tag,
 )
 from .pagination import CustomPagination
 from .permissions import IsAuthorOrReadOnly
@@ -33,7 +32,6 @@ from .serializers import (
     RecipeCreateSerializer,
     RecipeReadSerializer,
     RecipeShortSerializer,
-    TagSerializer,
     SubscriptionSerializer,
     UserSerializer,
     UserCreateSerializer,
@@ -227,12 +225,6 @@ class UserViewSet(viewsets.ModelViewSet):
             )
         subscription.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class TagViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Tag.objects.all()
-    serializer_class = TagSerializer
-    pagination_class = None
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
