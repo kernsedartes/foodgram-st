@@ -7,7 +7,6 @@ from .models import (
     Recipe,
     RecipeIngredient,
     ShoppingCart,
-    Tag,
 )
 from users.models import Subscription, User
 from django.contrib.auth import authenticate
@@ -28,7 +27,7 @@ class CustomTokenCreateSerializer(serializers.Serializer):
                 {"auth_token": ["Неверные учетные данные"]}
             )
 
-        self.user = user  # <-- ВАЖНО: сохраняем пользователя
+        self.user = user
 
         refresh = RefreshToken.for_user(user)
         return {
@@ -62,9 +61,7 @@ class UserSerializer(serializers.ModelSerializer):
     def get_is_subscribed(self, obj):
         request = self.context.get("request")
         if request and not request.user.is_anonymous:
-            return Subscription.objects.filter(
-                user=request.user, author=obj
-            ).exists()
+            return obj.subscribing.filter(user=request.user).exists()
         return False
 
 
@@ -105,9 +102,7 @@ class UserSimpleSerializer(serializers.ModelSerializer):
     def get_is_subscribed(self, obj):
         request = self.context.get("request")
         if request and not request.user.is_anonymous:
-            return Subscription.objects.filter(
-                user=request.user, author=obj
-            ).exists()
+            return obj.subscribing.filter(user=request.user).exists()
         return False
 
 
@@ -157,12 +152,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
         return obj.author.recipes.count()
 
 
-class TagSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Tag
-        fields = "__all__"
-
-
 class IngredientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Ingredient
@@ -171,7 +160,7 @@ class IngredientSerializer(serializers.ModelSerializer):
 
 class IngredientWriteSerializer(serializers.Serializer):
     id = serializers.IntegerField()
-    amount = serializers.IntegerField(min_value=1)
+    amount = serializers.IntegerField(min_value=1, max_value=32000)
 
 
 class RecipeIngredientSerializer(serializers.ModelSerializer):
@@ -215,36 +204,29 @@ class RecipeReadSerializer(serializers.ModelSerializer):
             "image",
             "text",
             "cooking_time",
-            # 'tags'
         )
 
     def get_is_favorited(self, obj):
-        user = self.context.get("request").user
+        user = self.context["request"].user
         if user.is_anonymous:
             return False
-        return Favorite.objects.filter(user=user, recipe=obj).exists()
+        return obj.favorites.filter(user=user).exists()
 
     def get_is_in_shopping_cart(self, obj):
-        user = self.context.get("request").user
+        user = self.context["request"].user
         if user.is_anonymous:
             return False
-        return ShoppingCart.objects.filter(user=user, recipe=obj).exists()
+        return obj.shopping_cart.filter(user=user).exists()
 
 
 class RecipeCreateSerializer(serializers.ModelSerializer):
     ingredients = IngredientWriteSerializer(many=True)
-    tags = serializers.PrimaryKeyRelatedField(
-        queryset=Tag.objects.all(),
-        many=True,
-        required=False,
-    )
     image = Base64ImageField(allow_null=False, required=True)
 
     class Meta:
         model = Recipe
         fields = (
             "ingredients",
-            "tags",
             "image",
             "name",
             "text",
