@@ -1,5 +1,4 @@
 from django.db.models import Sum
-from django.urls import reverse
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
@@ -25,6 +24,7 @@ from .models import (
     Recipe,
     RecipeIngredient,
     ShoppingCart,
+    Tag,
 )
 from .pagination import CustomPagination
 from .permissions import IsAuthorOrReadOnly
@@ -33,13 +33,12 @@ from .serializers import (
     RecipeCreateSerializer,
     RecipeReadSerializer,
     RecipeShortSerializer,
+    TagSerializer,
     SubscriptionSerializer,
     UserSerializer,
     UserCreateSerializer,
     UserSimpleSerializer,
     SetPasswordSerializer,
-    FavoriteSerializer,
-    ShoppingCartSerializer,
 )
 from users.models import Subscription, User
 from django.contrib.auth import authenticate
@@ -194,7 +193,15 @@ class UserViewSet(viewsets.ModelViewSet):
         author = get_object_or_404(User, pk=pk)
 
         if request.method == "POST":
-            if author.subscribing.filter(user=request.user).exists():
+            if author == request.user:
+                return Response(
+                    {"errors": "Нельзя подписаться на самого себя"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            if Subscription.objects.filter(
+                user=request.user, author=author
+            ).exists():
                 return Response(
                     {"errors": "Вы уже подписаны на этого автора"},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -210,7 +217,9 @@ class UserViewSet(viewsets.ModelViewSet):
             )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        subscription = author.subscribing.filter(user=request.user)
+        subscription = Subscription.objects.filter(
+            user=request.user, author=author
+        )
         if not subscription.exists():
             return Response(
                 {"errors": "Вы не подписаны на этого автора"},
@@ -218,6 +227,12 @@ class UserViewSet(viewsets.ModelViewSet):
             )
         subscription.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TagViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = Tag.objects.all()
+    serializer_class = TagSerializer
+    pagination_class = None
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
@@ -257,15 +272,18 @@ class RecipeViewSet(viewsets.ModelViewSet):
         recipe = get_object_or_404(Recipe, pk=pk)
 
         if request.method == "POST":
-            serializer = FavoriteSerializer(
-                data={"user": request.user.id, "recipe": recipe.id},
-                context={"request": request},
-            )
-            serializer.is_valid(raise_exception=True)
-            favorite = serializer.save()
+            if Favorite.objects.filter(
+                user=request.user, recipe=recipe
+            ).exists():
+                return Response(
+                    {"errors": "Рецепт уже в избранном"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            Favorite.objects.create(user=request.user, recipe=recipe)
+            serializer = RecipeShortSerializer(recipe)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        favorite = recipe.favorites.filter(user=request.user)
+        favorite = Favorite.objects.filter(user=request.user, recipe=recipe)
         if not favorite.exists():
             return Response(
                 {"errors": "Рецепта нет в избранном"},
@@ -283,15 +301,20 @@ class RecipeViewSet(viewsets.ModelViewSet):
         recipe = get_object_or_404(Recipe, pk=pk)
 
         if request.method == "POST":
-            serializer = ShoppingCartSerializer(
-                data={"user": request.user.id, "recipe": recipe.id},
-                context={"request": request},
-            )
-            serializer.is_valid(raise_exception=True)
-            shopping_cart = serializer.save()
+            if ShoppingCart.objects.filter(
+                user=request.user, recipe=recipe
+            ).exists():
+                return Response(
+                    {"errors": "Рецепт уже в списке покупок"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            ShoppingCart.objects.create(user=request.user, recipe=recipe)
+            serializer = RecipeShortSerializer(recipe)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        shopping_cart = recipe.shopping_cart.filter(user=request.user)
+        shopping_cart = ShoppingCart.objects.filter(
+            user=request.user, recipe=recipe
+        )
         if not shopping_cart.exists():
             return Response(
                 {"errors": "Рецепта нет в списке покупок"},
@@ -332,9 +355,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def get_link(self, request, pk=None):
         recipe = self.get_object()
         short_code = self.generate_short_code(recipe.id)
-        short_link = request.build_absolute_uri(
-            reverse("short-link", kwargs={"short_code": short_code})
-        )
+        short_link = f"https://foodgram.example.org/s/{short_code}"
         return Response({"short-link": short_link}, status=status.HTTP_200_OK)
 
     def generate_short_code(self, recipe_id):

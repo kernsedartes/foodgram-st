@@ -1,5 +1,5 @@
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator
 from users.models import User
 
 
@@ -23,6 +23,21 @@ class Ingredient(models.Model):
         return f"{self.name}, {self.measurement_unit}"
 
 
+class Tag(models.Model):
+    """Модель тега"""
+
+    name = models.CharField("Название", max_length=64, unique=True)
+    color = models.CharField("Цвет в HEX", max_length=7, unique=True)
+    slug = models.SlugField("Slug", max_length=64, unique=True)
+
+    class Meta:
+        verbose_name = "Тег"
+        verbose_name_plural = "Теги"
+
+    def __str__(self):
+        return self.name
+
+
 class Recipe(models.Model):
     """Модель рецепта"""
 
@@ -38,9 +53,13 @@ class Recipe(models.Model):
     ingredients = models.ManyToManyField(
         Ingredient, through="RecipeIngredient", verbose_name="Ингредиенты"
     )
-    cooking_time = models.PositiveSmallIntegerField(
-        "Время приготовления (мин)",
-        validators=[MinValueValidator(1), MaxValueValidator(32000)],
+    tags = models.ManyToManyField(
+        Tag,
+        related_name="recipes",
+        verbose_name="Теги",
+    )
+    cooking_time = models.PositiveIntegerField(
+        "Время приготовления (мин)", validators=[MinValueValidator(1)]
     )
     pub_date = models.DateTimeField("Дата публикации", auto_now_add=True)
 
@@ -68,9 +87,8 @@ class RecipeIngredient(models.Model):
         related_name="recipe_ingredients",
         verbose_name="Ингредиент",
     )
-    amount = models.PositiveSmallIntegerField(
-        "Количество",
-        validators=[MinValueValidator(1), MaxValueValidator(32000)],
+    amount = models.PositiveIntegerField(
+        "Количество", validators=[MinValueValidator(1)]
     )
 
     class Meta:
@@ -111,7 +129,6 @@ class Favorite(models.Model):
                 fields=["user", "recipe"], name="unique_favorite"
             )
         ]
-        ordering = ["-recipe__pub_date"]
 
     def __str__(self):
         return f"{self.user} -> {self.recipe}"
@@ -141,7 +158,6 @@ class ShoppingCart(models.Model):
                 fields=["user", "recipe"], name="unique_shopping_cart"
             )
         ]
-        ordering = ["-recipe__pub_date"]
 
     def __str__(self):
         return f"{self.user} -> {self.recipe}"

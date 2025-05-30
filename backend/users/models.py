@@ -56,7 +56,6 @@ class Subscription(models.Model):
                 name="no_self_subscription",
             ),
         ]
-        ordering = []
 
     def __str__(self):
         return f"{self.user} подписан на {self.author}"
