@@ -232,7 +232,6 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         model = Recipe
         fields = (
             "ingredients",
-            "tags",
             "image",
             "name",
             "text",
@@ -256,13 +255,18 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"ingredients": "Ингредиенты не должны повторяться"}
             )
+
+        required_fields = ["name", "text", "cooking_time"]
+        for field in required_fields:
+            if field not in data or not data[field]:
+                raise serializers.ValidationError(
+                    {field: f"Это поле обязательно."}
+                )
         return data
 
     def create(self, validated_data):
         ingredients_data = validated_data.pop("ingredients")
-        tags_data = validated_data.pop("tags", [])
         recipe = Recipe.objects.create(**validated_data)
-        recipe.tags.set(tags_data)
 
         for ingredient_data in ingredients_data:
             try:
@@ -285,31 +289,30 @@ class RecipeCreateSerializer(serializers.ModelSerializer):
         return recipe
 
     def update(self, instance, validated_data):
-        ingredients_data = validated_data.pop("ingredients")
-        tags_data = validated_data.pop("tags", [])
+        ingredients_data = validated_data.pop("ingredients", None)
 
         instance = super().update(instance, validated_data)
-        instance.tags.clear()
-        instance.tags.set(tags_data)
-        instance.recipe_ingredients.all().delete()
-
-        for ingredient_data in ingredients_data:
-            try:
-                ingredient = Ingredient.objects.get(id=ingredient_data["id"])
-            except Ingredient.DoesNotExist:
-                raise serializers.ValidationError(
-                    {
-                        "ingredients": (
-                            f"Ингредиент с id={ingredient_data['id']} "
-                            f"не существует."
-                        )
-                    }
+        if ingredients_data:
+            instance.recipe_ingredients.all().delete()
+            for ingredient_data in ingredients_data:
+                try:
+                    ingredient = Ingredient.objects.get(
+                        id=ingredient_data["id"]
+                    )
+                except Ingredient.DoesNotExist:
+                    raise serializers.ValidationError(
+                        {
+                            "ingredients": (
+                                f"Ингредиент с id={ingredient_data['id']} "
+                                f"не существует."
+                            )
+                        }
+                    )
+                RecipeIngredient.objects.create(
+                    recipe=instance,
+                    ingredient=ingredient,
+                    amount=ingredient_data["amount"],
                 )
-            RecipeIngredient.objects.create(
-                recipe=instance,
-                ingredient=ingredient,
-                amount=ingredient_data["amount"],
-            )
 
         return instance
 
