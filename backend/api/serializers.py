@@ -152,7 +152,6 @@ class SubscriptionSerializer(serializers.ModelSerializer):
                 code=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Используем related_name 'subscriber' для проверки
         if user.subscriber.filter(author=author).exists():
             raise serializers.ValidationError(
                 {"author": ["Вы уже подписаны на этого автора"]},
