@@ -264,7 +264,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         recipe = get_object_or_404(Recipe, pk=pk)
 
         if request.method == "POST":
-            if request.user.favorites.filter(recipe=recipe).exists():
+            if request.user.favorite.filter(recipe=recipe).exists():
                 return Response(
                     {"errors": "Рецепт уже в избранном"},
                     status=status.HTTP_400_BAD_REQUEST,
@@ -273,7 +273,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             serializer = RecipeShortSerializer(recipe)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        favorite = request.user.favorites.filter(recipe=recipe)
+        favorite = request.user.favorite.filter(recipe=recipe)
         if not favorite.exists():
             return Response(
                 {"errors": "Рецепта нет в избранном"},
@@ -315,7 +315,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
     def download_shopping_cart(self, request):
         ingredients = (
             RecipeIngredient.objects.filter(
-                recipe__shopping_cart__user=request.user
+                recipe__shopping_carts__user=request.user
             )
             .values("ingredient__name", "ingredient__measurement_unit")
             .annotate(total_amount=Sum("amount"))
