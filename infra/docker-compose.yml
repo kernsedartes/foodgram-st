@@ -37,12 +37,25 @@ services:
       - db
       - frontend
     command: >
-         python manage.py migrate &&
-         python manage.py collectstatic --noinput &&
-         python manage.py load_ingredients /app/data/ingredients.json &&
-         gunicorn backend.wsgi --bind 0.0.0.0:8000
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             python manage.py load_ingredients /app/data/ingredients.json &&
+             gunicorn backend.wsgi --bind 0.0.0.0:8000"
     networks:
       - foodgram-network
+
+  # frontend:
+  #   container_name: foodgram-front
+  #   build:
+  #     context: ../frontend/
+  #     dockerfile: Dockerfile
+  #   env_file: ../.env
+  #   volumes:
+  #     - static:/static/
+  #     - docs:/app/docs/
+  #     - frontend_build:/app/build
+  #   networks:
+  #     - foodgram-network
 
   frontend:
     container_name: foodgram-front
@@ -50,10 +63,6 @@ services:
       context: ../frontend/
       dockerfile: Dockerfile
     env_file: ../.env
-    volumes:
-      - static:/static/
-      - docs:/app/docs/
-      - frontend_build:/app/build
     networks:
       - foodgram-network
 
