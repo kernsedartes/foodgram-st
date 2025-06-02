@@ -40,7 +40,7 @@ services:
          python manage.py migrate &&
          python manage.py collectstatic --noinput &&
          python manage.py load_ingredients /app/data/ingredients.json &&
-         gunicorn backend.wsgi --bind 0.0.0.0:8000"
+         gunicorn backend.wsgi --bind 0.0.0.0:8000
     networks:
       - foodgram-network
 
