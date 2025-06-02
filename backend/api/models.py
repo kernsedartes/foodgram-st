@@ -1,6 +1,9 @@
 from django.db import models
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from users.models import User
+
+MIN_AMOUNT = 1
+MAX_AMOUNT = 32000
 
 
 class Ingredient(models.Model):
@@ -38,8 +41,12 @@ class Recipe(models.Model):
     ingredients = models.ManyToManyField(
         Ingredient, through="RecipeIngredient", verbose_name="Ингредиенты"
     )
-    cooking_time = models.PositiveIntegerField(
-        "Время приготовления (мин)", validators=[MinValueValidator(1)]
+    cooking_time = models.PositiveSmallIntegerField(
+        "Время приготовления (мин)",
+        validators=[
+            MinValueValidator(MIN_AMOUNT),
+            MaxValueValidator(MAX_AMOUNT),
+        ],
     )
     pub_date = models.DateTimeField("Дата публикации", auto_now_add=True)
 
@@ -67,8 +74,12 @@ class RecipeIngredient(models.Model):
         related_name="recipe_ingredients",
         verbose_name="Ингредиент",
     )
-    amount = models.PositiveIntegerField(
-        "Количество", validators=[MinValueValidator(1)]
+    amount = models.PositiveSmallIntegerField(
+        "Количество",
+        validators=[
+            MinValueValidator(MIN_AMOUNT),
+            MaxValueValidator(MAX_AMOUNT),
+        ],
     )
 
     class Meta:
