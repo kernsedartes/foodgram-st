@@ -50,6 +50,8 @@ services:
       context: ../frontend/
       dockerfile: Dockerfile
     env_file: ../.env
+    volumes:
+      - frontend_build:/usr/share/nginx/html
     networks:
       - foodgram-network
 
