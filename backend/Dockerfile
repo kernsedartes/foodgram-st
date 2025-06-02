@@ -3,10 +3,6 @@ WORKDIR /app
 COPY ../requirements.txt .
 COPY ../data .
 RUN pip install --no-cache-dir -r requirements.txt
-
-COPY wait-for-postgres.sh /app/wait-for-postgres.sh
-RUN chmod +x /app/wait-for-postgres.sh
-
 COPY . .
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "foodgram.wsgi"]
 
